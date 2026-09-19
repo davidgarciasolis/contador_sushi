@@ -102,6 +102,20 @@
       );
       frames.slice(1).forEach(source => { const image = new Image(); image.src = source; });
       count.value = 0;
+      let wakeLock = null;
+      async function keepScreenAwake() {
+        if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeLock.addEventListener('release', () => { wakeLock = null; });
+        } catch (_) {
+          // The browser or device can decline a wake lock; the counter still works normally.
+        }
+      }
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && !wakeLock) keepScreenAwake();
+      });
+      keepScreenAwake();
       let animationFrame;
       function playBackflip(startTime) {
         const duration = 760;
