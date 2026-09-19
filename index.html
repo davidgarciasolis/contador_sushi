@@ -90,12 +90,13 @@
         </button>
       </section>
       <p class="hint">Cada toque suma <b>1 sushi</b> y hace un backflip</p>
-      <footer>Tu cuenta se reinicia al recargar ✦</footer>
+      <footer><span id="awakeStatus">Toca el sushi para mantener la pantalla encendida</span> ✦</footer>
     </main>
     <script>
       const count = document.querySelector('#count');
       const button = document.querySelector('#flipButton');
       const sprite = document.querySelector('#makiSprite');
+      const awakeStatus = document.querySelector('#awakeStatus');
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const frames = Array.from({ length: 8 }, (_, index) =>
         `assets/backflip-frames/frame-${String(index + 1).padStart(2, '0')}.png`
@@ -103,19 +104,36 @@
       frames.slice(1).forEach(source => { const image = new Image(); image.src = source; });
       count.value = 0;
       let wakeLock = null;
+      let wakeLockRequested = false;
       async function keepScreenAwake() {
-        if (!('wakeLock' in navigator) || document.visibilityState !== 'visible') return;
+        if (!('wakeLock' in navigator)) {
+          awakeStatus.textContent = 'Este Safari no admite mantener la pantalla encendida';
+          return;
+        }
+        if (!window.isSecureContext) {
+          awakeStatus.textContent = 'Abre la página mediante HTTPS para mantener la pantalla encendida';
+          return;
+        }
+        if (document.visibilityState !== 'visible' || wakeLock) return;
         try {
           wakeLock = await navigator.wakeLock.request('screen');
-          wakeLock.addEventListener('release', () => { wakeLock = null; });
-        } catch (_) {
-          // The browser or device can decline a wake lock; the counter still works normally.
+          awakeStatus.textContent = 'Pantalla encendida mientras esta página esté abierta';
+          wakeLock.addEventListener('release', () => {
+            wakeLock = null;
+            awakeStatus.textContent = 'Toca el sushi para reactivar la pantalla';
+          });
+        } catch (error) {
+          awakeStatus.textContent = 'No se pudo mantener la pantalla encendida';
+          console.warn('No se pudo activar el bloqueo de pantalla:', error);
         }
       }
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && !wakeLock) keepScreenAwake();
+        if (document.visibilityState === 'visible' && wakeLockRequested && !wakeLock) keepScreenAwake();
       });
-      keepScreenAwake();
+      button.addEventListener('pointerdown', () => {
+        wakeLockRequested = true;
+        keepScreenAwake();
+      }, { passive: true });
       let animationFrame;
       function playBackflip(startTime) {
         const duration = 760;
