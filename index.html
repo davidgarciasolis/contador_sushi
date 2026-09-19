@@ -130,10 +130,10 @@
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && wakeLockRequested && !wakeLock) keepScreenAwake();
       });
-      button.addEventListener('pointerdown', () => {
+      button.addEventListener('click', () => {
         wakeLockRequested = true;
         keepScreenAwake();
-      }, { passive: true });
+      });
       let animationFrame;
       function playBackflip(startTime) {
         const duration = 760;
